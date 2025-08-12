@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plan de Viaje Interactivo con IA: Londres 2025</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony -->
+    <!-- Application Structure Plan: Se ha diseñado una SPA con una estructura de dashboard de una sola página dividida en cuatro secciones lógicas: "Resumen del Viaje", "Plan Diario", "Recomendaciones" y "Consejos". Esta arquitectura se eligió para proporcionar acceso rápido tanto a la información logística clave (vuelos, hoteles) como a un itinerario detallado e interactivo. La navegación superior fija permite un desplazamiento fluido entre secciones. El "Plan Diario" utiliza un sistema de pestañas para presentar cada día de forma individual, evitando la sobrecarga de información y cumpliendo el requisito principal del usuario de una organización "por días". Las "Recomendaciones" se presentan en una cuadrícula filtrable para que el usuario pueda explorar activamente las opciones en lugar de leer una lista estática. Esta estructura prioriza la usabilidad y la claridad, transformando un documento de texto en una herramienta de planificación funcional. -->
+    <!-- Visualization & Content Choices: Report Info: Itinerario de viaje, vuelos, hoteles, recomendaciones de restaurantes. -> Goal: Organizar, Informar, Explorar. -> Viz/Presentation Method: 1) Resumen: Tarjetas de información con iconos para logística. 2) Plan Diario: Sistema de pestañas interactivas (HTML/CSS/JS). 3) Recomendaciones: Cuadrícula de tarjetas con filtros interactivos (HTML/CSS/JS). 4) Consejos: Bloque de texto destacado. -> Interaction: Clic en pestañas para mostrar/ocultar planes diarios; clic en botones para filtrar recomendaciones por tipo de cocina. -> Justification: El enfoque interactivo (pestañas y filtros) hace que la información sea más digerible y útil que un documento estático. Las tarjetas organizan la información de forma visualmente atractiva. No se utilizan gráficos de datos (Chart.js) ya que el informe es cualitativo y no contiene datos cuantitativos que justifiquen una visualización de este tipo. -> Library/Method: Vanilla JS para toda la interactividad, Tailwind CSS para el diseño. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f7f4;
+            color: #3d3d3d;
+        }
+        .active-tab {
+            border-color: #4a5568;
+            background-color: #e2e8f0;
+            color: #2d3748;
+            font-weight: 600;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .active-filter {
+            background-color: #3c5b6f;
+            color: #ffffff;
+        }
+        .prose h3 {
+            @apply text-2xl font-bold text-gray-800 mb-4;
+        }
+        .prose h4 {
+            @apply text-xl font-bold text-gray-700 mt-6 mb-3;
+        }
+        .prose p {
+            @apply mb-4 text-gray-700;
+        }
+        .prose ul {
+            @apply list-disc list-inside space-y-2 text-gray-700 mb-4;
+        }
+        .prose blockquote {
+            @apply border-l-4 border-blue-400 bg-blue-50 p-4 rounded-r-lg my-4 text-blue-800;
+        }
+        .gemini-button {
+            @apply mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-300;
+        }
+        #ai-modal {
+            transition: opacity 0.3s ease;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .editable-content:focus {
+            outline: 2px solid #4f46e5;
+            background-color: #eef2ff;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin: -1rem;
+        }
+        .checklist-item input:checked + label {
+            text-decoration: line-through;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-xl md:text-2xl font-bold text-gray-800">Londres 2025</h1>
+            <div class="hidden md:flex space-x-6">
+                <a href="#resumen" class="text-gray-600 hover:text-gray-900 transition">Resumen</a>
+                <a href="#plan-diario" class="text-gray-600 hover:text-gray-900 transition">Plan Diario</a>
+                <a href="#recomendaciones" class="text-gray-600 hover:text-gray-900 transition">Recomendaciones</a>
+                <a href="#checklist" class="text-gray-600 hover:text-gray-900 transition">Checklist</a>
+                <a href="#consejos" class="text-gray-600 hover:text-gray-900 transition">Consejos</a>
+            </div>
+            <button id="mobile-menu-button" class="md:hidden text-gray-700 focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+        </nav>
+        <div id="mobile-menu" class="hidden md:hidden px-6 pb-4">
+            <a href="#resumen" class="block py-2 text-gray-600 hover:text-gray-900">Resumen</a>
+            <a href="#plan-diario" class="block py-2 text-gray-600 hover:text-gray-900">Plan Diario</a>
+            <a href="#recomendaciones" class="block py-2 text-gray-600 hover:text-gray-900">Recomendaciones</a>
+            <a href="#checklist" class="block py-2 text-gray-600 hover:text-gray-900">Checklist</a>
+            <a href="#consejos" class="block py-2 text-gray-600 hover:text-gray-900">Consejos</a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-8 md:py-12">
+
+        <section id="resumen" class="mb-16">
+            <h2 class="text-3xl font-bold text-gray-800 mb-2">Resumen del Viaje</h2>
+            <p class="text-gray-600 mb-8">Toda la información clave de tu escapada a Londres de un solo vistazo.</p>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200/50">
+                    <h3 class="font-bold text-lg mb-4 text-gray-700 flex items-center">✈️ Vuelos</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <p class="font-semibold text-gray-800">Ida: Almería → Londres (STN)</p>
+                            <p class="text-sm text-gray-600">Vuelo FR8352</p>
+                            <p class="text-sm text-gray-600">13/08/2025 | 21:10 - 22:55</p>
+                        </div>
+                        <div class="border-t pt-4">
+                            <p class="font-semibold text-gray-800">Vuelta: Londres (STN) → Almería</p>
+                            <p class="text-sm text-gray-600">Vuelo FR8351</p>
+                            <p class="text-sm text-gray-600">18/08/2025 | 14:55 - 18:50</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200/50">
+                    <h3 class="font-bold text-lg mb-4 text-gray-700 flex items-center">🏨 Alojamientos</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <p class="font-semibold text-gray-800">The George Hotel, Colchester</p>
+                            <p class="text-sm text-gray-600">13/08/2025 - 15/08/2025 (2 noches)</p>
+                            <p class="text-sm text-gray-600">Check-in: 14:00 | Check-out: 11:00</p>
+                        </div>
+                        <div class="border-t pt-4">
+                            <p class="font-semibold text-gray-800">Hotel Saint London</p>
+                            <p class="text-sm text-gray-600">9 Aldgate High Street, EC3N 1AH</p>
+                            <p class="text-sm text-gray-600">15/08/2025 - 18/08/2025 (3 noches)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200/50">
+                    <h3 class="font-bold text-lg mb-4 text-gray-700 flex items-center">🎟️ Evento Principal</h3>
+                    <div class="space-y-2">
+                        <p class="font-semibold text-gray-800">The Smashing Pumpkins</p>
+                        <p class="text-sm text-gray-600">Colchester Castle Summer Series</p>
+                        <p class="text-sm text-gray-600">Jueves, 14 de agosto de 2025 @ 16:00</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="plan-diario" class="mb-16">
+            <h2 class="text-3xl font-bold text-gray-800 mb-2">Plan Diario</h2>
+            <p class="text-gray-600 mb-8">Tu itinerario día a día. Haz clic en cada día para ver los detalles.</p>
+
+            <div class="flex flex-wrap border-b border-gray-300 mb-6 -mx-2">
+                <button class="tab-button flex-grow text-center py-3 px-2 border-b-2 border-transparent text-gray-500 hover:bg-gray-200/60 transition duration-300 active-tab" data-day="miercoles">Miércoles 13</button>
+                <button class="tab-button flex-grow text-center py-3 px-2 border-b-2 border-transparent text-gray-500 hover:bg-gray-200/60 transition duration-300" data-day="jueves">Jueves 14</button>
+                <button class="tab-button flex-grow text-center py-3 px-2 border-b-2 border-transparent text-gray-500 hover:bg-gray-200/60 transition duration-300" data-day="viernes">Viernes 15</button>
+                <button class="tab-button flex-grow text-center py-3 px-2 border-b-2 border-transparent text-gray-500 hover:bg-gray-200/60 transition duration-300" data-day="sabado">Sábado 16</button>
+                <button class="tab-button flex-grow text-center py-3 px-2 border-b-2 border-transparent text-gray-500 hover:bg-gray-200/60 transition duration-300" data-day="domingo">Domingo 17</button>
+                <button class="tab-button flex-grow text-center py-3 px-2 border-b-2 border-transparent text-gray-500 hover:bg-gray-200/60 transition duration-300" data-day="lunes">Lunes 18</button>
+            </div>
+
+            <div id="plan-container" class="bg-white p-6 md:p-8 rounded-xl shadow-lg border border-gray-200/50 min-h-[400px] prose max-w-none">
+                <div id="miercoles" class="tab-content active">
+                    <h3>Miércoles, 13 de agosto: Viaje y Llegada a Colchester</h3>
+                    <div class="editable-content pt-4" contenteditable="true">
+                        <h4>&nbsp;</h4>
+                        <h4>Salir hacia el aeropuerto a las 18:45&nbsp;</h4>
+<h4>&nbsp;</h4>
+                        <h4>Guía para el Viaje Nocturno del Aeropuerto de Stansted a Colchester</h4>
+<p>Tras la llegada de tu vuelo a las 22:55, y considerando el tiempo de control de pasaportes y recogida de equipaje (estimado 23:45-00:15), la opción más recomendada es el autocar de National Express.</p>
+                        
+                        <h4>Opción Recomendada: Autocar National Express</h4>
+                        <ul>
+                            <li><strong>Servicio Clave:</strong> Ruta 717 de National Express.</li>
+                            <li><strong>Salida de Stansted:</strong> 00:30 (ya del jueves 14).</li>
+                            <li><strong>Llegada a Colchester:</strong> 01:15.</li>
+                            <li><strong>Ventajas:</strong> Es la opción más económica, directa y fiable a esa hora. El tren no es una alternativa viable por la falta de conexiones.</li>
+                        </ul>
+
+                        <h4>Su Viaje, Paso a Paso:</h4>
+                        <ol class="list-decimal list-inside space-y-2">
+                            <li>Siga las señales "Buses and Coaches" en el aeropuerto.</li>
+                            <li>La estación de autocares está a 2 minutos a pie de la terminal.</li>
+                            <li>Embarque en la ruta 717 (destino Ipswich, con parada en Colchester).</li>
+                            <li>El trayecto dura unos 45-50 minutos.</li>
+                            <li>Llegada a una parada céntrica en Colchester, cerca de su hotel.</li>
+                        </ol>
+
+                        <blockquote>
+                            <p class="font-bold">&nbsp;</p>
+                            <p class="font-bold">&nbsp;</p>
+                            <img src="imgs/national.png" width="1044" height="785" alt=""/>
+                            <p class="font-bold">Estrategia de Reserva</p>
+<p>Reserva online con antelación en la web de National Express para conseguir tarifas mucho más baratas (desde 9€). Recuerda seleccionar la fecha del **jueves 14 de agosto** para la salida de las 00:30. Considera añadir el suplemento "Change & Go" por si tu vuelo se retrasa.</p>
+                        </blockquote>
+                      <p>&nbsp;</p>
+                      <img src="imgs/george.png" width="1468" height="279" alt=""/>
+                      <p>Finalmente, haz el check-in en The George Hotel.</p>
+                        <p>Hotel: The George Colchester Address: 116 High Street Colchester Essex United Kingdom CO1 1TD &nbsp;</p>
+                    </div>
+                    <button class="gemini-button optimize-day-btn">✨ Optimizar este día con IA</button>
+                </div>
+                <div id="jueves" class="tab-content">
+                    <h3>Jueves, 14 de agosto: Historia Antigua y Rock Moderno en Colchester</h3>
+                    <div class="editable-content pt-4" contenteditable="true">
+                        <h4>Mañana: Explorando el Pasado Romano y Normando (10:00 - 13:30)</h4>
+                        <p>El día del concierto es perfecto para explorar el patrimonio de Colchester. La clave es visitar el museo por la mañana, ya que por la tarde coincidiría con la apertura de puertas del concierto y no se permite la re-entrada.</p>
+                        <ul>
+                            <li><strong>10:15 - 12:45:</strong> Visita al <strong>Museo del Castillo de Colchester</strong>. Se encuentra dentro de la fortaleza normanda más grande de Europa. Se recomienda el tour guiado opcional para acceder a las bóvedas romanas.</li>
+                            <li><strong>12:45 - 13:30:</strong> Paseo por <strong>Castle Park</strong>, un hermoso parque victoriano que rodea el castillo.</li>
+                        </ul>
+
+                        <h4>Tarde y Noche: Concierto de The Smashing Pumpkins (16:00 en adelante)</h4>
+                        <p>Tras un almuerzo y descanso, dirígete al recinto del concierto en Castle Park.</p>
+                        <blockquote>
+                            <p class="font-bold">Información Crítica para el Concierto:</p>
+                            <ul>
+                               <li><strong>Horario:</strong> Puertas abren a las 16:00, finaliza sobre las 22:30.</li>
+                               <li><strong>Entradas:</strong> Llevar identificación con foto.</li>
+                               <li><strong>Bolsas:</strong> Solo se permiten bolsas pequeñas (tamaño A4).</li>
+                               <li><strong>Comida/Bebida:</strong> Prohibido introducir del exterior, excepto una botella de agua de 500ml sellada.</li>
+                               <li><strong>Artículos Prohibidos:</strong> Paraguas, sillas, cámaras profesionales, etc.</li>
+                               <li><strong>Política de Re-entrada:</strong> No se permite salir y volver a entrar.</li>
+                            </ul>
+                        </blockquote>
+                    </div>
+                    <button class="gemini-button optimize-day-btn">✨ Optimizar este día con IA</button>
+                </div>
+                <div id="viernes" class="tab-content">					
+                    <h3>Viernes, 15 de agosto: De Colchester a la Vibrante Londres</h3>
+                  <p>&nbsp;</p>
+                    <p>Aclarar desde qué estación cogemos el tren hasta London Liverpool Street&nbsp;</p>
+					<img src="imgs/londonliverpool.png" width="300" height="300" alt=""/>
+					<div class="editable-content pt-4" contenteditable="true">
+          			<h4>Mañana: Viaje a Londres</h4>							
+                        <p>Después del check-out en The George Hotel, la mejor opción para llegar a Londres es el tren por su velocidad y conveniencia.</p>						
+                        <ul>
+                            <li><strong>Estación Recomendada:</strong> Dirígete a la estación de **Colchester (COL)**, también conocida como North Station. Aunque Colchester Town está más cerca del hotel, COL tiene los servicios más rápidos y frecuentes a Londres.</li>
+                            <li><strong>Destino:</strong> London Liverpool Street (LST). El trayecto dura unos 47 minutos.</li>
+                            <li><strong>Llegada y Check-in:</strong> Desde Liverpool Street, tu hotel, el Hotel Saint (9 Aldgate High Street), está a un corto paseo.</li>
+							
+                        </ul>
+						<img src="imgs/saints.png" width="600" height="600" alt=""/>prueba
+                        <h4>Tarde Libre: Primera Exploración de Londres</h4>
+                        <p>Tras el check-in, tienes toda la tarde para empezar a descubrir la ciudad. Aquí tienes algunas ideas:</p>
+                        <ul>
+                            <li><strong>Horizon 22:</strong> El mirador gratuito más alto de Londres. ¡Reserva tus entradas con antelación!</li>
+                            <li><strong>F1 Arcade London:</strong> Una experiencia de simulación de carreras de F1.</li>
+                            <li><strong>Outernet London:</strong> Cerca de Tottenham Court Road, una experiencia de proyección inmersiva y gratuita.</li>
+                            <li><strong>Graffiti Tunnel (Leake Street):</strong> Un túnel de 300 metros lleno de arte urbano, a 10 minutos del Big Ben.</li>
+                            <li><strong>Tiendas de Piccadilly Circus:</strong> Visita las enormes y tematizadas tiendas de Lego y M&M's.</li>
+                        </ul>
+                    </div>
+                    <button class="gemini-button optimize-day-btn">✨ Optimizar este día con IA</button>
+                </div>
+                <div id="sabado" class="tab-content">
+                    <h3>Sábado, 16 de agosto: Un Peregrinaje de Cultura Pop</h3>
+                    <div class="editable-content pt-4" contenteditable="true">
+                        <p>Este itinerario te guiará por lugares icónicos de la historia y la cultura pop londinense.</p>
+                        <h4>Mañana (09:00 - 11:30): Peregrinaje Histórico en Westminster</h4>
+                        <ul>
+                            <li><strong>09:30 - 11:00:</strong> Visita la <strong>Abadía de Westminster</strong> (con entradas pre-reservadas). No te pierdas la Silla de la Coronación y el Rincón de los Poetas.</li>
+                            <li><strong>11:00 - 11:30:</strong> Fotos en <strong>Parliament Square</strong> con el Palacio de Westminster y el Big Ben.</li>
+                        </ul>
+                        <h4>Mediodía (11:30 - 14:30): El Encanto Cinematográfico de Notting Hill</h4>
+                        <ul>
+                            <li>Visita el famoso <strong>Portobello Road Market</strong>.</li>
+                            <li>Pásate por <strong>The Notting Hill Bookshop</strong> (de la película "Notting Hill").</li>
+                            <li>Encuentra <strong>St Luke's Mews</strong> (de la película "Love Actually").</li>
+                            <li>Almuerza en un pub tradicional de la zona.</li>
+                        </ul>
+                        <h4>Tarde (14:30 - 18:30): Con The Beatles y Harry Potter</h4>
+                        <ul>
+                            <li><strong>15:00 - 16:00:</strong> Recrea la portada del álbum en el famoso paso de cebra de <strong>Abbey Road</strong>.</li>
+                            <li><strong>17:00 - 18:00:</strong> Visita el <strong>Andén 9 ¾</strong> en la estación de King's Cross. Utiliza el sistema de cola virtual para no esperar y explora la zona de <strong>Coal Drops Yard</strong> mientras tanto.</li>
+                        </ul>
+                        <h4>Atardecer y Noche (18:30 en adelante): Elegancia en el West End</h4>
+                        <ul>
+                            <li>Pasea por <strong>Piccadilly Circus</strong> y <strong>Regent Street</strong>.</li>
+                            <li>Descubre <strong>Goodwin's Court</strong>, un callejón que inspiró el Callejón Diagon.</li>
+                            <li>Cena en la zona de Covent Garden o Soho.</li>
+                        </ul>
+                    </div>
+                    <button class="gemini-button optimize-day-btn">✨ Optimizar este día con IA</button>
+                </div>
+                <div id="domingo" class="tab-content">
+                    <h3>Domingo, 17 de agosto: De la Pompa Real a la Contracultura</h3>
+                    <div class="editable-content pt-4" contenteditable="true">
+                        <p>Un día de contrastes, desde la ceremonia real hasta el espíritu alternativo de Camden.</p>
+                        <h4>Mañana (09:00 - 12:00): Pompa y Circunstancia Real</h4>
+                        <ul>
+                            <li><strong>09:30 - 10:00:</strong> Llega a la zona del Palacio de Buckingham para coger un buen sitio. La mejor vista es desde las escalinatas del <strong>Victoria Memorial</strong>.</li>
+                            <li><strong>10:45:</strong> Comienza la ceremonia del <strong>Cambio de Guardia</strong>. Dura unos 45 minutos.</li>
+                        </ul>
+                        <h4>Mediodía (12:00 - 14:30): Arte y Cultura en Trafalgar Square</h4>
+                        <ul>
+                            <li>Pasea por The Mall hasta <strong>Trafalgar Square</strong>.</li>
+                            <li>Visita la <strong>National Gallery</strong> (entrada gratuita) para ver obras maestras como "Los Girasoles" de Van Gogh. Almuerza en su cafetería para optimizar el tiempo.</li>
+                        </ul>
+                        <h4>Tarde (14:30 - 17:00): El Encanto del West End</h4>
+                        <ul>
+                            <li>Explora <strong>Covent Garden</strong> y su <strong>Apple Market</strong>, lleno de artesanía los domingos.</li>
+                            <li>Descubre el colorido patio escondido de <strong>Neal's Yard</strong>.</li>
+                        </ul>
+                        <h4>Atardecer y Noche (17:00 en adelante): El Espíritu Alternativo de Camden</h4>
+                        <ul>
+                            <li>Toma la línea Northern hasta <strong>Camden Town</strong>.</li>
+                            <li>Piérdete en el laberinto de <strong>Camden Market</strong>, especialmente en el Stables Market.</li>
+                            <li>Cena en uno de los muchísimos puestos de comida callejera con sabores de todo el mundo.</li>
+                        </ul>
+                    </div>
+                    <button class="gemini-button optimize-day-btn">✨ Optimizar este día con IA</button>
+                </div>
+                <div id="lunes" class="tab-content">
+                    <h3>Lunes, 18 de agosto: Vistas Panorámicas y Vuelta a Casa</h3>
+                    <div class="editable-content pt-4" contenteditable="true">
+                        <p>Una mañana intensa para aprovechar las últimas horas en Londres antes de dirigirte al aeropuerto.</p>
+                        <h4>Mañana a Contrarreloj</h4>
+                        <ul>
+                            <li><strong>08:00 - 08:45: Visita al Sky Garden.</strong> Sube a primera hora para tomar un café en uno de sus bares (abren a las 8:00) y disfruta de las vistas con menos gente. No se necesita reserva para los bares a esa hora.</li>
+                            <li><strong>08:45 - 09:00:</strong> Cruza el Puente de Londres a pie hasta The Shard (15 min).</li>
+                            <li><strong>09:00 - 10:00:</strong> Aprovecha para desayunar en <strong>Borough Market</strong>, justo al lado de The Shard.</li>
+                            <li><strong>10:00 - 10:45: Visita a The Shard.</strong> Con tu entrada pre-reservada para las 10:00, serás de los primeros en subir.</li>
+                        </ul>
+                        <h4>Viaje al Aeropuerto</h4>
+                        <ul>
+                            <li><strong>10:45 - 11:00:</strong> Viaje en metro desde London Bridge hasta la estación de <strong>Liverpool Street</strong>.</li>
+                            <li><strong>11:00 en adelante:</strong> Desde Liverpool Street, toma el tren <strong>Stansted Express</strong>. Es la forma más rápida y directa de llegar al aeropuerto (aprox. 50 minutos).</li>
+                        </ul>
+                         <blockquote>
+                            <p class="font-bold">Consideraciones Clave</p>
+                            <p>Es imprescindible reservar con antelación las entradas para Sky Garden (gratuitas, se liberan con 3 semanas de antelación) y The Shard. Coordina con el hotel para dejar tu equipaje en consigna.</p>
+                        </blockquote>
+                    </div>
+                    <button class="gemini-button optimize-day-btn">✨ Optimizar este día con IA</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="recomendaciones" class="mb-16">
+            <h2 class="text-3xl font-bold text-gray-800 mb-2">Recomendaciones Gastronómicas</h2>
+            <p class="text-gray-600 mb-8">Una selección de lugares para comer y tomar café. Filtra por categoría o pide una sugerencia a nuestro asistente de IA.</p>
+            
+            <div class="flex flex-wrap items-center gap-2 mb-8">
+                <button class="filter-button px-4 py-2 rounded-full text-sm font-medium bg-white border border-gray-300 hover:bg-gray-100 transition active-filter" data-filter="all">Todos</button>
+                <button class="filter-button px-4 py-2 rounded-full text-sm font-medium bg-white border border-gray-300 hover:bg-gray-100 transition" data-filter="fish-and-chips">Fish & Chips</button>
+                <button class="filter-button px-4 py-2 rounded-full text-sm font-medium bg-white border border-gray-300 hover:bg-gray-100 transition" data-filter="italiano">Italiano</button>
+                <button class="filter-button px-4 py-2 rounded-full text-sm font-medium bg-white border border-gray-300 hover:bg-gray-100 transition" data-filter="japones">Japonés</button>
+                <button class="filter-button px-4 py-2 rounded-full text-sm font-medium bg-white border border-gray-300 hover:bg-gray-100 transition" data-filter="hamburguesa">Hamburguesa</button>
+                <button class="filter-button px-4 py-2 rounded-full text-sm font-medium bg-white border border-gray-300 hover:bg-gray-100 transition" data-filter="cafeteria">Cafetería/Brunch</button>
+                <button id="suggest-restaurant-btn" class="gemini-button ml-auto">✨ Pide una sugerencia a la IA</button>
+            </div>
+
+            <div id="recommendations-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="recommendation-card bg-white p-6 rounded-xl shadow-lg border border-gray-200/50" data-category="fish-and-chips">
+                    <h4 class="font-bold text-lg text-gray-800">Poppies Fish & Chips</h4>
+                    <p class="text-gray-600 mt-2">Un clásico muy popular para probar el plato típico.</p>
+                </div>
+                <div class="recommendation-card bg-white p-6 rounded-xl shadow-lg border border-gray-200/50" data-category="fish-and-chips">
+                    <h4 class="font-bold text-lg text-gray-800">Heddon Street Kitchen</h4>
+                    <p class="text-gray-600 mt-2">Restaurante del famoso chef Gordon Ramsay.</p>
+                </div>
+                <div class="recommendation-card bg-white p-6 rounded-xl shadow-lg border border-gray-200/50" data-category="fish-and-chips">
+                    <h4 class="font-bold text-lg text-gray-800">The Sherlock Holmes Pub</h4>
+                    <p class="text-gray-600 mt-2">Combina comida tradicional con un ambiente temático.</p>
+                </div>
+                 <div class="recommendation-card bg-white p-6 rounded-xl shadow-lg border border-gray-200/50" data-category="italiano">
+                    <h4 class="font-bold text-lg text-gray-800">Bancone Covent Garden</h4>
+                    <p class="text-gray-600 mt-2">Recomendado en la guía Michelin, precios estupendos y comida buenísima.</p>
+                </div>
+                <div class="recommendation-card bg-white p-6 rounded-xl shadow-lg border border-gray-200/50" data-category="italiano">
+                    <h4 class="font-bold text-lg text-gray-800">Locale</h4>
+                    <p class="text-gray-600 mt-2">Pizzas y comida italiana buenísima.</p>
+                </div>
+                <div class="recommendation-card bg-white p-6 rounded-xl shadow-lg border border-gray-200/50" data-category="italiano">
+                    <h4 class="font-bold text-lg text-gray-800">Bella Italia</h4>
+                    <p class="text-gray-600 mt-2">Buena relación calidad-precio para comida italiana.</p>
+                </div>
+                <div class="recommendation-card bg-white p-6 rounded-xl shadow-lg border border-gray-200/50" data-category="italiano">
+                    <h4 class="font-bold text-lg text-gray-800">Strada Southbank</h4>
+                    <p class="text-gray-600 mt-2">Comida italiana con vistas espectaculares al Tower Bridge.</p>
+                </div>
+                <div class="recommendation-card bg-white p-6 rounded-xl shadow-lg border border-gray-200/50" data-category="japones">
+                    <h4 class="font-bold text-lg text-gray-800">Din Tai Fung</h4>
+                    <p class="text-gray-600 mt-2">Famoso restaurante de dumplings, una apuesta segura.</p>
+                </div>
+                <div class="recommendation-card bg-white p-6 rounded-xl shadow-lg border border-gray-200/50" data-category="japones">
+                    <h4 class="font-bold text-lg text-gray-800">Shoryu Ramen</h4>
+                    <p class="text-gray-600 mt-2">Varios locales, ideal para un buen ramen.</p>
+                </div>
+                <div class="recommendation-card bg-white p-6 rounded-xl shadow-lg border border-gray-200/50" data-category="japones">
+                    <h4 class="font-bold text-lg text-gray-800">Kulu Kulu Sushi</h4>
+                    <p class="text-gray-600 mt-2">Sushi fresco en cinta transportadora. Local pequeño.</p>
+                </div>
+                 <div class="recommendation-card bg-white p-6 rounded-xl shadow-lg border border-gray-200/50" data-category="japones">
+                    <h4 class="font-bold text-lg text-gray-800">Ukai</h4>
+                    <p class="text-gray-600 mt-2">Restaurante de sushi de alta calidad.</p>
+                </div>
+                <div class="recommendation-card bg-white p-6 rounded-xl shadow-lg border border-gray-200/50" data-category="hamburguesa">
+                    <h4 class="font-bold text-lg text-gray-800">Shake Shack</h4>
+                    <p class="text-gray-600 mt-2">Una hamburguesa de esta franquicia americana siempre es una buena idea.</p>
+                </div>
+                <div class="recommendation-card bg-white p-6 rounded-xl shadow-lg border border-gray-200/50" data-category="cafeteria">
+                    <h4 class="font-bold text-lg text-gray-800">Bill's</h4>
+                    <p class="text-gray-600 mt-2">Perfecto para desayunos y brunch. Hay varios por la ciudad.</p>
+                </div>
+                <div class="recommendation-card bg-white p-6 rounded-xl shadow-lg border border-gray-200/50" data-category="cafeteria">
+                    <h4 class="font-bold text-lg text-gray-800">Farm Girl</h4>
+                    <p class="text-gray-600 mt-2">Genial para desayunar o hacer un brunch, especialmente el de Notting Hill.</p>
+                </div>
+                <div class="recommendation-card bg-white p-6 rounded-xl shadow-lg border border-gray-200/50" data-category="cafeteria">
+                    <h4 class="font-bold text-lg text-gray-800">26 Grains</h4>
+                    <p class="text-gray-600 mt-2">Se encuentra en el colorido Neal's Yard.</p>
+                </div>
+                <div class="recommendation-card bg-white p-6 rounded-xl shadow-lg border border-gray-200/50" data-category="cafeteria">
+                    <h4 class="font-bold text-lg text-gray-800">Where The Pancakes Are</h4>
+                    <p class="text-gray-600 mt-2">El paraíso para los amantes de las tortitas.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="checklist" class="mb-16">
+            <h2 class="text-3xl font-bold text-gray-800 mb-2">Checklist Pre-Viaje</h2>
+            <p class="text-gray-600 mb-8">Asegúrate de tener todo listo antes de salir. Tu progreso se guardará automáticamente.</p>
+            <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg border border-gray-200/50">
+                <ul id="travel-checklist" class="space-y-4">
+                    <li class="checklist-item flex items-center">
+                        <input type="checkbox" id="check-docs" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <label for="check-docs" class="ml-3 block text-gray-900">Documentación (Pasaporte en vigor)</label>
+                    </li>
+                    <li class="checklist-item flex items-center">
+                        <input type="checkbox" id="check-tickets" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <label for="check-tickets" class="ml-3 block text-gray-900">Billetes de avión / Tarjetas de embarque</label>
+                    </li>
+                    <li class="checklist-item flex items-center">
+                        <input type="checkbox" id="check-hotel" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <label for="check-hotel" class="ml-3 block text-gray-900">Reservas de hotel (impresas o en el móvil)</label>
+                    </li>
+                    <li class="checklist-item flex items-center">
+                        <input type="checkbox" id="check-concert" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <label for="check-concert" class="ml-3 block text-gray-900">Entradas para el concierto</label>
+                    </li>
+                    <li class="checklist-item flex items-center">
+                        <input type="checkbox" id="check-adapter" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <label for="check-adapter" class="ml-3 block text-gray-900">Adaptador de enchufe (Tipo G para Reino Unido)</label>
+                    </li>
+                    <li class="checklist-item flex items-center">
+                        <input type="checkbox" id="check-card" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <label for="check-card" class="ml-3 block text-gray-900">Tarjeta de crédito/débito sin comisiones</label>
+                    </li>
+                     <li class="checklist-item flex items-center">
+                        <input type="checkbox" id="check-cash" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <label for="check-cash" class="ml-3 block text-gray-900">Libras esterlinas en efectivo (pequeña cantidad)</label>
+                    </li>
+                    <li class="checklist-item flex items-center">
+                        <input type="checkbox" id="check-powerbank" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <label for="check-powerbank" class="ml-3 block text-gray-900">Cargador portátil (Power Bank)</label>
+                    </li>
+                    <li class="checklist-item flex items-center">
+                        <input type="checkbox" id="check-clothes" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <label for="check-clothes" class="ml-3 block text-gray-900">Ropa adecuada para clima variable (vestir por capas)</label>
+                    </li>
+                    <li class="checklist-item flex items-center">
+                        <input type="checkbox" id="check-shoes" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <label for="check-shoes" class="ml-3 block text-gray-900">Calzado cómodo para caminar mucho</label>
+                    </li>
+                    <li class="checklist-item flex items-center">
+                        <input type="checkbox" id="check-umbrella" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <label for="check-umbrella" class="ml-3 block text-gray-900">Paraguas o chubasquero</label>
+                    </li>
+                    <li class="checklist-item flex items-center">
+                        <input type="checkbox" id="check-meds" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <label for="check-meds" class="ml-3 block text-gray-900">Medicación personal</label>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="consejos">
+             <h2 class="text-3xl font-bold text-gray-800 mb-2">Consejos Prácticos</h2>
+             <p class="text-gray-600 mb-8">Pequeños trucos para que tu viaje sea más fácil.</p>
+             <div class="bg-blue-50 border-l-4 border-blue-400 p-6 rounded-r-lg prose max-w-none">
+                <h4 class="!text-blue-800 !mt-0">Transporte: La Magia del _Contactless_</h4>
+                <p class="!text-blue-700">Para todos los viajes en metro y autobús, la opción más sencilla y económica es utilizar una <strong>tarjeta de débito/crédito <em>contactless</em></strong> o un pago móvil (Apple/Google Pay).</p>
+                <ul>
+                    <li class="!text-blue-700"><strong>No necesitas comprar nada:</strong> Olvídate de la tarjeta Oyster o billetes de papel.</li>
+                    <li class="!text-blue-700"><strong>Límite Diario (_Daily Cap_):</strong> El sistema tiene un tope de gasto diario (aprox. £8.50 para Zonas 1-2). Una vez alcanzado, el resto de viajes del día son gratis.</li>
+                    <li class="!text-blue-700"><strong>Fácil de usar:</strong> Solo tienes que acercar tu tarjeta al lector amarillo al entrar y salir del metro (en autobuses, solo al subir).</li>
+                </ul>
+                <p class="!text-blue-700 !mb-0"><strong class="font-semibold">Recomendación clave:</strong> Cada persona que viaje necesita su propia tarjeta _contactless_. No se puede usar la misma para pagar el viaje de varias personas a la vez.</p>
+             </div>
+             <div class="bg-amber-50 border-l-4 border-amber-400 p-6 rounded-r-lg prose max-w-none mt-6">
+                <h4 class="!text-amber-800 !mt-0">¡Ojo con las comisiones!</h4>
+                <p class="!text-amber-700 !mb-0">Para evitar sorpresas, utiliza una tarjeta que no cobre comisiones por cambio de divisa, como Revolut o N26. Te servirá tanto para pagar en tiendas como para el transporte público.</p>
+             </div>
+        </section>
+
+    </main>
+    
+    <footer class="bg-gray-800 text-white mt-16">
+        <div class="container mx-auto px-6 py-4 text-center text-sm">
+            <p>&copy; 2025 Plan de Viaje. Creado para facilitar tu aventura.</p>
+        </div>
+    </footer>
+
+    <!-- AI Modal -->
+    <div id="ai-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden opacity-0">
+        <div class="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="ai-modal-title" class="text-2xl font-bold text-gray-800">Sugerencia de la IA</h3>
+                    <button id="ai-modal-close" class="text-gray-500 hover:text-gray-800">&times;</button>
+                </div>
+                <div id="ai-modal-content" class="prose max-w-none">
+                    <div class="flex justify-center items-center h-48">
+                        <div class="loader"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const day = button.dataset.day;
+                    tabButtons.forEach(btn => btn.classList.remove('active-tab'));
+                    button.classList.add('active-tab');
+                    tabContents.forEach(content => {
+                        content.classList.remove('active');
+                        if (content.id === day) {
+                            content.classList.add('active');
+                        }
+                    });
+                });
+            });
+
+            const filterButtons = document.querySelectorAll('.filter-button');
+            const recommendationCards = document.querySelectorAll('.recommendation-card');
+
+            filterButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const filter = button.dataset.filter;
+                    filterButtons.forEach(btn => btn.classList.remove('active-filter'));
+                    button.classList.add('active-filter');
+                    recommendationCards.forEach(card => {
+                        card.style.display = 'block';
+                        if (filter !== 'all' && card.dataset.category !== filter) {
+                            card.style.display = 'none';
+                        }
+                    });
+                });
+            });
+            
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+            
+            mobileMenu.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', () => {
+                    mobileMenu.classList.add('hidden');
+                });
+            });
+
+            // --- STATE MANAGEMENT WITH LOCALSTORAGE (CORRECTED & IMPROVED) ---
+            const appStateKey = 'londonTravelAppState';
+
+            // Function to save the entire app state
+            const saveState = () => {
+                const state = {
+                    checklist: {},
+                    dailyPlans: {}
+                };
+
+                // Save checklist state
+                document.querySelectorAll('#travel-checklist input[type="checkbox"]').forEach(checkbox => {
+                    state.checklist[checkbox.id] = checkbox.checked;
+                });
+
+                // Save editable content state
+                document.querySelectorAll('.editable-content').forEach(contentDiv => {
+                    const dayId = contentDiv.closest('.tab-content').id;
+                    state.dailyPlans[dayId] = contentDiv.innerHTML;
+                });
+
+                localStorage.setItem(appStateKey, JSON.stringify(state));
+            };
+
+            // Function to load the entire app state
+            const loadState = () => {
+                const savedStateJSON = localStorage.getItem(appStateKey);
+                if (!savedStateJSON) return;
+
+                try {
+                    const savedState = JSON.parse(savedStateJSON);
+
+                    // Load checklist state
+                    if (savedState.checklist) {
+                        Object.keys(savedState.checklist).forEach(checkboxId => {
+                            const checkbox = document.getElementById(checkboxId);
+                            if (checkbox) {
+                                checkbox.checked = savedState.checklist[checkboxId];
+                            }
+                        });
+                    }
+
+                    // Load editable content state
+                    if (savedState.dailyPlans) {
+                        Object.keys(savedState.dailyPlans).forEach(dayId => {
+                            const tabContent = document.getElementById(dayId);
+                            if (tabContent) {
+                                const contentDiv = tabContent.querySelector('.editable-content');
+                                if (contentDiv) {
+                                    contentDiv.innerHTML = savedState.dailyPlans[dayId];
+                                }
+                            }
+                        });
+                    }
+                } catch (e) {
+                    console.error("Error loading state from localStorage", e);
+                }
+            };
+
+            // Debounce function
+            const debounce = (func, delay) => {
+                let timeoutId;
+                return (...args) => {
+                    clearTimeout(timeoutId);
+                    timeoutId = setTimeout(() => {
+                        func.apply(this, args);
+                    }, delay);
+                };
+            };
+
+            const debouncedSaveState = debounce(saveState, 500);
+
+            // Load state when the page loads
+            loadState();
+
+            // Add event listeners to save state on changes
+            document.querySelectorAll('.editable-content').forEach(contentDiv => {
+                contentDiv.addEventListener('input', debouncedSaveState);
+            });
+
+            const checklistContainer = document.getElementById('travel-checklist');
+            if (checklistContainer) {
+                checklistContainer.addEventListener('change', (e) => {
+                    if (e.target.matches('input[type="checkbox"]')) {
+                        saveState(); // No need to debounce checkbox clicks
+                    }
+                });
+            }
+
+
+            // --- GEMINI API INTEGRATION ---
+            const modal = document.getElementById('ai-modal');
+            const modalTitle = document.getElementById('ai-modal-title');
+            const modalContent = document.getElementById('ai-modal-content');
+            const closeModalButton = document.getElementById('ai-modal-close');
+            const loaderHTML = `<div class="flex justify-center items-center h-48"><div class="loader"></div></div>`;
+
+            const openModal = () => {
+                modal.classList.remove('hidden');
+                setTimeout(() => modal.classList.remove('opacity-0'), 10);
+            };
+
+            const closeModal = () => {
+                modal.classList.add('opacity-0');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            };
+
+            closeModalButton.addEventListener('click', closeModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeModal();
+                }
+            });
+
+            async function callGeminiAPI(prompt, maxRetries = 3) {
+                const apiKey = ""; 
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                
+                let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                const payload = { contents: chatHistory };
+
+                for (let i = 0; i < maxRetries; i++) {
+                    try {
+                        const response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+
+                        const result = await response.json();
+                        
+                        if (result.candidates && result.candidates.length > 0 &&
+                            result.candidates[0].content && result.candidates[0].content.parts &&
+                            result.candidates[0].content.parts.length > 0) {
+                            return result.candidates[0].content.parts[0].text;
+                        } else {
+                            throw new Error("Respuesta de la API inválida o vacía.");
+                        }
+                    } catch (error) {
+                        console.error(`Intento ${i + 1} fallido:`, error);
+                        if (i === maxRetries - 1) {
+                            return "Lo siento, no pude obtener una respuesta del asistente de IA en este momento. Por favor, inténtalo de nuevo más tarde.";
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
+                    }
+                }
+            }
+            
+            function formatResponse(text) {
+                return text.split('\n').map(p => `<p>${p}</p>`).join('');
+            }
+
+            document.querySelectorAll('.optimize-day-btn').forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    const tabContent = e.target.closest('.tab-content');
+                    const editableContent = tabContent.querySelector('.editable-content');
+                    const title = tabContent.querySelector('h3').textContent;
+                    const content = editableContent.innerText;
+                    
+                    modalTitle.textContent = `Optimizando: ${title}`;
+                    modalContent.innerHTML = loaderHTML;
+                    openModal();
+
+                    const prompt = `Eres un asistente de viaje experto en Londres. Basado en el siguiente plan para un día en Londres, genera un itinerario narrativo y detallado en español. Incluye consejos prácticos, datos curiosos sobre los lugares, y sugerencias de cómo moverte entre ellos. El plan es:\n\n${title}\n${content}\n\nResponde con un tono amigable y útil. Estructura la respuesta con párrafos claros. No uses Markdown.`;
+                    
+                    const responseText = await callGeminiAPI(prompt);
+                    modalContent.innerHTML = formatResponse(responseText);
+                });
+            });
+
+            document.getElementById('suggest-restaurant-btn').addEventListener('click', async () => {
+                const restaurantList = Array.from(document.querySelectorAll('.recommendation-card')).map(card => {
+                    const name = card.querySelector('h4').textContent;
+                    const desc = card.querySelector('p').textContent;
+                    return `- ${name}: ${desc}`;
+                }).join('\n');
+
+                modalTitle.textContent = 'Sugerencia del Crítico Gastronómico';
+                modalContent.innerHTML = loaderHTML;
+                openModal();
+
+                const prompt = `Eres un crítico gastronómico experto en Londres. De la siguiente lista de restaurantes, elige una o dos que consideres una experiencia absolutamente imperdible y explica por qué en un párrafo para cada una. La lista es:\n\n${restaurantList}\n\nResponde en español con un tono entusiasta y conocedor. No uses Markdown.`;
+
+                const responseText = await callGeminiAPI(prompt);
+                modalContent.innerHTML = formatResponse(responseText);
+            });
+        });
+    </script>
+</body>
+</html>
